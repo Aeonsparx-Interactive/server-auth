@@ -1,0 +1,50 @@
+// Self-service OAuth link/unlink widget (Account Security tab).
+//
+// Each provider is rendered as a single row laid out on a fixed grid so the
+// action buttons always line up, the provider name takes the remaining space,
+// and the linked username sits in its own column instead of floating in the
+// middle of the row.
+.o_auth_oidc_accounts {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    width: 100%;
+
+    .o_auth_oidc_account {
+        display: grid;
+        grid-template-columns: 1.25rem minmax(0, 1fr) auto 5.5rem;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .o_auth_oidc_icon {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 1rem;
+        height: 1rem;
+        font-size: 0.9rem;
+    }
+
+    .o_auth_oidc_name {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .o_auth_oidc_uid {
+        color: var(--o-web-color-muted, #6c757d);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .o_auth_oidc_btn {
+        justify-self: end;
+        width: 100%;
+    }
+
+    .o_auth_oidc_empty {
+        padding-left: 1.75rem;
+    }
+}

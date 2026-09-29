@@ -14,7 +14,7 @@ from jose.exceptions import JWTError
 from jose.utils import base64url_encode, long_to_base64
 
 import odoo
-from odoo.exceptions import AccessDenied
+from odoo.exceptions import AccessDenied, UserError
 from odoo.tests import common
 
 from odoo.addons.website.tools import MockRequest as _MockRequest
@@ -162,6 +162,11 @@ class TestAuthOIDCAuthorizationCodeFlow(common.HttpCase):
     def _prepare_login_test_user(self):
         user = self.env.ref("base.user_demo")
         user.write({"oauth_provider_id": self.provider_rec.id, "oauth_uid": user.login})
+        # The login flow resolves users through the auth.oauth.account model
+        # (the legacy fields are kept only for backward compatibility), so the
+        # account row must exist for the user to be found on login.
+        if not user.oauth_account_ids:
+            user._auth_oidc_link_account(self.provider_rec.id, user.login, "42")
         return user
 
     def _prepare_login_test_responses(
@@ -493,3 +498,151 @@ class TestAuthOIDCAuthorizationCodeFlow(common.HttpCase):
             )
         self.assertEqual(token, "hs256token")
         self.assertEqual(login, user.login)
+
+    # ------------------------------------------------------------------
+    # Multi-provider (auth.oauth.account) tests
+    # ------------------------------------------------------------------
+    def _create_second_provider(self):
+        """Create a second enabled provider sharing the test provider's
+        endpoints (so the mocked token/JWKS responses apply to both)."""
+        return self.env["auth.oauth.provider"].create(
+            {
+                "name": "Second Test Provider",
+                "flow": "id_token_code",
+                "enabled": True,
+                "client_id": "auth_oidc-test-2",
+                "token_map": "sub:user_id",
+                "auth_endpoint": self.provider_rec.auth_endpoint,
+                "scope": "openid email",
+                "token_endpoint": self.provider_rec.token_endpoint,
+                "jwks_uri": self.provider_rec.jwks_uri,
+                "body": "Log in with Second",
+            }
+        )
+
+    @responses.activate
+    def test_login_second_provider_same_user(self):
+        """A second provider login for the same user creates a second account
+        row and does not clobber the legacy single-provider fields."""
+        user = self._prepare_login_test_user()
+        second_provider = self._create_second_provider()
+        self._prepare_login_test_responses(
+            id_token_body={"user_id": "second-uid", "email": user.email},
+            access_token="second-token",
+        )
+
+        with MockRequest(self.env):
+            db, login, token = self.env["res.users"].auth_oauth(
+                second_provider.id,
+                {"state": json.dumps({})},
+            )
+        self.assertEqual(login, user.login)
+        self.assertEqual(token, "second-token")
+
+        accounts = user.oauth_account_ids
+        self.assertEqual(len(accounts), 2)
+        self.assertEqual(
+            set(accounts.provider_id.mapped("id")),
+            {self.provider_rec.id, second_provider.id},
+        )
+        # Legacy fields still point to the first provider.
+        self.assertEqual(user.oauth_provider_id, self.provider_rec)
+        self.assertEqual(user.oauth_uid, user.login)
+        # Current-login token is stamped on the user (base re-auth).
+        self.assertEqual(user.oauth_access_token, "second-token")
+
+    @responses.activate
+    def test_login_updates_token_on_relogin(self):
+        """Re-login with the same provider refreshes the token on the account
+        and on the user."""
+        user = self._prepare_login_test_user()
+        self._prepare_login_test_responses(
+            id_token_body={"user_id": user.login},
+            access_token="first-token",
+        )
+        with MockRequest(self.env):
+            self.env["res.users"].auth_oauth(
+                self.provider_rec.id, {"state": json.dumps({})}
+            )
+        self.assertEqual(user.oauth_access_token, "first-token")
+
+        self._prepare_login_test_responses(
+            id_token_body={"user_id": user.login},
+            access_token="second-token",
+        )
+        with MockRequest(self.env):
+            self.env["res.users"].auth_oauth(
+                self.provider_rec.id, {"state": json.dumps({})}
+            )
+        self.assertEqual(user.oauth_access_token, "second-token")
+        account = user.oauth_account_ids
+        self.assertEqual(len(account), 1)
+        self.assertEqual(account.oauth_access_token, "second-token")
+
+    @responses.activate
+    def test_login_new_user_creates_account(self):
+        """A first login for an unknown provider identity creates the user and
+        an account row (legacy fields set to the first provider)."""
+        self.env["ir.config_parameter"].sudo().set_param(
+            "auth_signup.invitation_scope", "b2c"
+        )
+        self._prepare_login_test_responses(
+            id_token_body={
+                "user_id": "brand-new-uid",
+                "email": "brand.new@example.com",
+                "name": "Brand New",
+            },
+            access_token="new-token",
+        )
+        with MockRequest(self.env):
+            db, login, token = self.env["res.users"].auth_oauth(
+                self.provider_rec.id,
+                {"state": json.dumps({})},
+            )
+        self.assertEqual(login, "brand.new@example.com")
+        new_user = self.env["res.users"].sudo().search(
+            [("login", "=", "brand.new@example.com")], limit=1
+        )
+        self.assertTrue(new_user)
+        self.assertEqual(new_user.oauth_provider_id, self.provider_rec)
+        self.assertEqual(new_user.oauth_uid, "brand-new-uid")
+        self.assertEqual(new_user.oauth_access_token, "new-token")
+        account = new_user.oauth_account_ids
+        self.assertEqual(len(account), 1)
+        self.assertEqual(account.provider_id, self.provider_rec)
+        self.assertEqual(account.oauth_uid, "brand-new-uid")
+
+    def test_link_and_unlink_account(self):
+        """Self-service link/unlink of a provider for the current user."""
+        user = self.env.ref("base.user_demo")
+        second_provider = self._create_second_provider()
+
+        user._auth_oidc_link_account(second_provider.id, "linked-uid", "tok-1")
+        account = user.oauth_account_ids
+        self.assertEqual(len(account), 1)
+        self.assertEqual(account.provider_id, second_provider)
+        self.assertEqual(account.oauth_uid, "linked-uid")
+        self.assertEqual(account.oauth_access_token, "tok-1")
+
+        # Re-linking the same provider refreshes the token (no duplicate).
+        user._auth_oidc_link_account(second_provider.id, "linked-uid", "tok-2")
+        self.assertEqual(len(user.oauth_account_ids), 1)
+        self.assertEqual(user.oauth_account_ids.oauth_access_token, "tok-2")
+
+        user.auth_oidc_unlink_account(second_provider.id)
+        self.assertFalse(user.oauth_account_ids)
+
+    def test_link_account_already_linked_to_other_user(self):
+        """Linking a provider identity already bound to another user fails."""
+        user = self.env.ref("base.user_demo")
+        other = self.env["res.users"].create(
+            {
+                "name": "Other",
+                "login": "other-link",
+                "email": "other-link@example.com",
+            }
+        )
+        second_provider = self._create_second_provider()
+        other._auth_oidc_link_account(second_provider.id, "taken-uid", "tok")
+        with self.assertRaises(UserError):
+            user._auth_oidc_link_account(second_provider.id, "taken-uid", "tok")

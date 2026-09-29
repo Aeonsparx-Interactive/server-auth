@@ -1,3 +1,12 @@
+## 16.0.1.5.0 2026-09-23
+
+- Allow a user to link/unlink several OAuth providers from their own profile
+  (Account Security tab, one Link/Unlink button per enabled provider).
+- Introduce the `auth.oauth.account` model to support multiple login providers
+  per user; the legacy single-provider fields are kept in sync for backward
+  compatibility.
+- Migrate existing single-provider links to the new model on upgrade.
+
 ## 16.0.1.1.0 2024-02-28
 
 - Forward port OpenID Connect fixes from 15.0 to 16.0

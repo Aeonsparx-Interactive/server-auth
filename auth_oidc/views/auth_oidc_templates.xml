@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<odoo>
+    <!-- Hide the email/password login form when the "Hide Email Login" setting
+         is enabled. The OAuth provider buttons live inside div.o_login_auth (a
+         sibling of the submit button), so only the email field, password field
+         and "Log in" button are hidden; the provider buttons remain visible.
+         ``hide_email_login`` is provided by the OpenIDLogin.web_login override. -->
+    <template id="login" inherit_id="web.login" name="OIDC - Hide email login form">
+        <xpath expr="//div[hasclass('field-login')]" position="attributes">
+            <attribute name="t-if">not hide_email_login</attribute>
+        </xpath>
+        <xpath expr="//div[.//input[@id='password']]" position="attributes">
+            <attribute name="t-if">not hide_email_login</attribute>
+        </xpath>
+        <xpath expr="//button[@type='submit'][hasclass('btn-primary')]" position="attributes">
+            <attribute name="t-if">not hide_email_login</attribute>
+        </xpath>
+        <!-- Hide the "Don't have an account?" / "Reset Password" links
+             (added by auth_signup.login) when the email form is hidden. -->
+        <xpath expr="//div[hasclass('justify-content-between')][hasclass('d-flex')]" position="attributes">
+            <attribute name="t-if">not hide_email_login</attribute>
+        </xpath>
+    </template>
+
+    <!-- Hide the "- or -" separator in the OAuth providers block when the
+         email form is hidden. This element lives in the separate
+         auth_oauth.providers template (called via t-call), not in web.login. -->
+    <template id="providers" inherit_id="auth_oauth.providers" name="OIDC - Hide - or - separator">
+        <xpath expr="//em" position="attributes">
+            <attribute name="t-if">not hide_email_login</attribute>
+        </xpath>
+    </template>
+</odoo>

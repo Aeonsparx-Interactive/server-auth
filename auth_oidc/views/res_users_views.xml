@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Remove the base single-provider fields from the admin "Oauth" tab:
+         linking is now self-service in the profile (see below). -->
+    <record id="view_users_form_oauth_accounts" model="ir.ui.view">
+        <field name="name">res.users.form.inherit.oauth.accounts</field>
+        <field name="model">res.users</field>
+        <field name="type">form</field>
+        <field name="inherit_id" ref="auth_oauth.view_users_form" />
+        <field name="arch" type="xml">
+            <xpath expr="//page[@name='oauth']//group" position="replace" />
+        </field>
+    </record>
+    <!-- Self-service link/unlink widget (one button per enabled provider) in
+         the "Account Security" tab of the user's own profile, next to the
+         password change and API key generation. -->
+    <record id="view_users_form_simple_modif_oauth_accounts" model="ir.ui.view">
+        <field name="name">res.users.form.simple.modif.inherit.oauth.accounts</field>
+        <field name="model">res.users</field>
+        <field name="type">form</field>
+        <field name="inherit_id" ref="base.view_users_form_simple_modif" />
+        <field name="arch" type="xml">
+            <xpath expr="//group[@name='auth']" position="after">
+                <separator string="OAuth Providers" />
+                <field
+                    name="oauth_account_widget_data"
+                    widget="auth_oidc_oauth_account"
+                    nolabel="1"
+                    class="w-50"
+                />
+            </xpath>
+        </field>
+    </record>
+</odoo>

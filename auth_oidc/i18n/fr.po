@@ -137,3 +137,80 @@ msgstr "du type depuis:vers, par exemple upn:email sub:user_id"
 #: model:auth.oauth.provider,body:auth_oidc.local_keycloak
 msgid "keycloak:8080 on localhost"
 msgstr ""
+
+#. module: auth_oidc
+#: model:ir.model,name:auth_oidc.model_auth_oauth_account
+msgid "OAuth Account"
+msgstr ""
+
+#. module: auth_oidc
+#: model:ir.model.fields,field_description:auth_oidc.field_auth_oauth_account__oauth_uid
+msgid "OAuth User ID"
+msgstr ""
+
+#. module: auth_oidc
+#: model:ir.model.fields,help:auth_oidc.field_auth_oauth_account__oauth_uid
+msgid ""
+"The provider's unique identifier for this user (e.g. the OpenID Connect "
+"``sub`` claim)."
+msgstr ""
+
+#. module: auth_oidc
+#: model:ir.model.fields,field_description:auth_oidc.field_auth_oauth_account__oauth_access_token
+msgid "OAuth Access Token"
+msgstr ""
+
+#. module: auth_oidc
+#: model:ir.model.fields,field_description:auth_oidc.field_auth_oauth_account__provider_id
+msgid "Provider"
+msgstr ""
+
+#. module: auth_oidc
+#: model:ir.model.fields,field_description:auth_oidc.field_auth_oauth_account__provider_name
+msgid "Provider Name"
+msgstr ""
+
+#. module: auth_oidc
+#: model:ir.model.fields,field_description:auth_oidc.field_auth_oauth_account__user_id
+msgid "User"
+msgstr "Utilisateur"
+
+#. module: auth_oidc
+#: model:ir.model.fields,field_description:auth_oidc.field_res_users__oauth_account_ids
+msgid "OAuth Accounts"
+msgstr ""
+
+#. module: auth_oidc
+#: model:ir.model.fields,field_description:auth_oidc.field_res_users__oauth_account_widget_data
+msgid "OAuth Account Widget Data"
+msgstr ""
+
+#. module: auth_oidc
+#: code:addons/auth_oidc/models/res_users.py:0
+msgid "This %s account is already linked to another user."
+msgstr ""
+
+#. module: auth_oidc
+#: model:ir.model.constraint_message:auth_oidc.constraint_auth_oauth_account_uniq_provider_uid
+msgid "An OAuth UID must be unique per provider"
+msgstr ""
+
+#. module: auth_oidc
+#: model:ir.model.constraint_message:auth_oidc.constraint_auth_oauth_account_uniq_user_provider_uid
+msgid "A user can link a given provider only once"
+msgstr ""
+
+#. module: auth_oidc
+#: code:addons/auth_oidc/static/src/js/oauth_account_widget.js:0
+msgid "Link"
+msgstr ""
+
+#. module: auth_oidc
+#: code:addons/auth_oidc/static/src/js/oauth_account_widget.js:0
+msgid "Unlink"
+msgstr ""
+
+#. module: auth_oidc
+#: code:addons/auth_oidc/static/src/js/oauth_account_widget.js:0
+msgid "No enabled OAuth provider."
+msgstr ""
